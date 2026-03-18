@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no"
+  />
+  <title>Handwashing Test Prototype</title>
+  <style>
+    :root {
+      --bg: #e9e9e9;
+      --text: #353535;
+      --ring-track: rgba(100, 100, 100, 0.7);
+      --ring-fill: #d8b45b;
+      --shadow: 0 8px 22px rgba(0, 0, 0, 0.08);
+      --button-fill: rgba(255,255,255,0.08);
+      --button-active: rgba(255,255,255,0.18);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Arial, sans-serif;
+      background: var(--bg);
+      touch-action: manipulation;
+    }
+
+    body {
+      position: relative;
+      color: var(--text);
+    }
+
+    canvas#fx {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: #ececec;
+      z-index: 0;
+    }
+
+    .ui {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 28px;
+    }
+
+    .layout {
+      width: min(1200px, 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 72px;
+    }
+
+    .row {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 84px;
+    }
+
+    .mode {
+      position: relative;
+      border: none;
+      background: transparent;
+      padding: 0;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .mode:active {
+      transform: scale(0.98);
+    }
+
+    .circle {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      border-radius: 50%;
+      background: var(--button-fill);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+    }
+
+    .large .circle {
+      width: 280px;
+      height: 280px;
+    }
+
+    .small .circle {
+      width: 210px;
+      height: 210px;
+    }
+
+    .label {
+      position: relative;
+      z-index: 2;
+      white-space: pre-line;
+      line-height: 1.28;
+      font-weight: 500;
+      color: rgba(48,48,48,0.95);
+      padding: 12px;
+    }
+
+    .large .label {
+      font-size: 26px;
+    }
+
+    .small .label {
+      font-size: 24px;
+    }
+
+    .ring-svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+      z-index: 1;
+      overflow: visible;
+    }
+
+    .track {
+      fill: none;
+      stroke: var(--ring-track);
+      stroke-width: 3.8;
+    }
+
+    .progress {
+      fill: none;
+      stroke: var(--ring-fill);
+      stroke-width: 5;
+      stroke-linecap: round;
+      stroke-dasharray: 999;
+      stroke-dashoffset: 999;
+      transition: stroke 0.2s ease;
+      filter: drop-shadow(0 0 3px rgba(216,180,91,0.4));
+    }
+
+    .inner-outline {
+      position: absolute;
+      inset: 8px;
+      border-radius: 50%;
+      border: 1px solid rgba(110,110,110,0.18);
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .mode.active .circle {
+      background: var(--button-active);
+    }
+
+    .mode.active::after {
+      content: "";
+      position: absolute;
+      inset: -5px;
+      border-radius: 50%;
+      box-shadow: 0 0 0 8px rgba(216,180,91,0.08);
+      pointer-events: none;
+    }
+
+    .mode.paused .progress {
+      stroke: #9d9d9d;
+    }
+
+    .status {
+      position: fixed;
+      top: 18px;
+      right: 18px;
+      z-index: 20;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.2);
+      color: rgba(60,60,60,0.9);
+      font-size: 14px;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      border: 1px solid rgba(120,120,120,0.15);
+    }
+
+    @media (max-width: 1200px) {
+      .row { gap: 42px; }
+      .large .circle {
+        width: 220px;
+        height: 220px;
+      }
+      .small .circle {
+        width: 170px;
+        height: 170px;
+      }
+      .large .label {
+        font-size: 22px;
+      }
+      .small .label {
+        font-size: 20px;
+      }
+    }
+
+    @media (max-width: 880px) {
+      .layout { gap: 36px; }
+      .row { gap: 18px; }
+      .large .circle {
+        width: 170px;
+        height: 170px;
+      }
+      .small .circle {
+        width: 132px;
+        height: 132px;
+      }
+      .large .label {
+        font-size: 18px;
+      }
+      .small .label {
+        font-size: 17px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="fx"></canvas>
+
+  <div class="status" id="statusText">Idle</div>
+
+  <div class="ui">
+    <div class="layout">
+      <div class="row top">
+        <button class="mode large" data-mode="quick" aria-label="Quick Refresh">
+          <div class="circle">
+            <div class="inner-outline"></div>
+            <svg class="ring-svg" viewBox="0 0 100 100" aria-hidden="true">
+              <circle class="track" cx="50" cy="50" r="47"></circle>
+              <circle class="progress" cx="50" cy="50" r="47"></circle>
+            </svg>
+            <div class="label">Quick
+Refresh</div>
+          </div>
+        </button>
+
+        <button class="mode large" data-mode="standard" aria-label="Standard Shower">
+          <div class="circle">
+            <div class="inner-outline"></div>
+            <svg class="ring-svg" viewBox="0 0 100 100" aria-hidden="true">
+              <circle class="track" cx="50" cy="50" r="47"></circle>
+              <circle class="progress" cx="50" cy="50" r="47"></circle>
+            </svg>
+            <div class="label">Standard
+Shower</div>
+          </div>
+        </button>
+
+        <button class="mode large" data-mode="relax" aria-label="Relax Ritual">
+          <div class="circle">
+            <div class="inner-outline"></div>
+            <svg class="ring-svg" viewBox="0 0 100 100" aria-hidden="true">
+              <circle class="track" cx="50" cy="50" r="47"></circle>
+              <circle class="progress" cx="50" cy="50" r="47"></circle>
+            </svg>
+            <div class="label">Relax
+Ritual</div>
+          </div>
+        </button>
+      </div>
+
+      <div class="row bottom">
+        <button class="mode small" data-mode="more" aria-label="1 More Minute">
+          <div class="circle">
+            <div class="inner-outline"></div>
+            <svg class="ring-svg" viewBox="0 0 100 100" aria-hidden="true">
+              <circle class="track" cx="50" cy="50" r="47"></circle>
+              <circle class="progress" cx="50" cy="50" r="47"></circle>
+            </svg>
+            <div class="label">1 More
+Minute</div>
+          </div>
+        </button>
+
+        <button class="mode small" data-mode="continuous" aria-label="Continuous">
+          <div class="circle">
+            <div class="inner-outline"></div>
+            <svg class="ring-svg" viewBox="0 0 100 100" aria-hidden="true">
+              <circle class="track" cx="50" cy="50" r="47"></circle>
+              <circle class="progress" cx="50" cy="50" r="47"></circle>
+            </svg>
+            <div class="label">Continuous</div>
+          </div>
+        </button>
+
+        <button class="mode small" data-mode="pause" aria-label="Pause">
+          <div class="circle">
+            <div class="inner-outline"></div>
+            <svg class="ring-svg" viewBox="0 0 100 100" aria-hidden="true">
+              <circle class="track" cx="50" cy="50" r="47"></circle>
+              <circle class="progress" cx="50" cy="50" r="47"></circle>
+            </svg>
+            <div class="label">Pause</div>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =========================
+    // MODE CONFIG
+    // =========================
+    const MODE_NAMES = {
+      quick: "Quick Refresh",
+      standard: "Standard Shower",
+      relax: "Relax Ritual",
+      more: "1 More Minute",
+      continuous: "Continuous",
+      pause: "Pause"
+    };
+
+    const MODES = {
+      more: {
+        duration: 5,
+        sound: "more",
+        visual: "more"
+      },
+      quick: {
+        duration: 10,
+        sound: "quick",
+        visual: "quick"
+      },
+      standard: {
+        duration: 20,
+        sound: "standard",
+        visual: "standard"
+      },
+      relax: {
+        duration: 40,
+        sound: "relax",
+        visual: "relax"
+      },
+      continuous: {
+        duration: null,
+        sound: null,
+        visual: "continuous"
+      }
+    };
+
+    // =========================
+    // DOM
+    // =========================
+    const canvas = document.getElementById("fx");
+    const ctx = canvas.getContext("2d");
+    const buttons = [...document.querySelectorAll(".mode")];
+    const statusText = document.getElementById("statusText");
+
+    // =========================
+    // SIZE
+    // =========================
+    let w = 0;
+    let h = 0;
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      w = window.innerWidth;
+      h = window.innerHeight;
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
+      canvas.style.width = w + "px";
+      canvas.style.height = h + "px";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    window.addEventListener("resize", resize);
+    resize();
+
+    // =========================
+    // AUDIO ENGINE (CODE-GENERATED)
+    // =========================
+    let audioCtx = null;
+    let masterGain = null;
+    let currentAudioNodes = [];
+    let audioStarted = false;
+    let synthTickInterval = null;
+    let synthStep = 0;
+
+    function ensureAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        masterGain = audioCtx.createGain();
+        masterGain.gain.value = 0.18;
+        masterGain.connect(audioCtx.destination);
+      }
+      if (audioCtx.state === "suspended") {
+        audioCtx.resume();
+      }
+      audioStarted = true;
+    }
+
+    function clearAudio() {
+      if (synthTickInterval) {
+        clearInterval(synthTickInterval);
+        synthTickInterval = null;
+      }
+      currentAudioNodes.forEach(node => {
+        try { node.stop?.(); } catch (e) {}
+        try { node.disconnect?.(); } catch (e) {}
+      });
+      currentAudioNodes = [];
+      synthStep = 0;
+    }
+
+    function createOsc(freq, type, gainValue, duration, attack = 0.01, release = 0.04, when = 0) {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime + when);
+
+      gain.gain.setValueAtTime(0.0001, audioCtx.currentTime + when);
+      gain.gain.linearRampToValueAtTime(gainValue, audioCtx.currentTime + when + attack);
+      gain.gain.linearRampToValueAtTime(0.0001, audioCtx.currentTime + when + duration - release);
+
+      osc.connect(gain);
+      gain.connect(masterGain);
+
+      osc.start(audioCtx.currentTime + when);
+      osc.stop(audioCtx.currentTime + when + duration);
+
+      currentAudioNodes.push(osc, gain);
+    }
+
+    function playQuickSynth() {
+      clearAudio();
+      const seq = [659, 784, 880, 988, 1175, 988, 880, 784];
+      synthTickInterval = setInterval(() => {
+        const f = seq[synthStep % seq.length];
+        createOsc(f, "triangle", 0.065, 0.16, 0.005, 0.05);
+        createOsc(f * 2, "sine", 0.018, 0.12, 0.003, 0.04);
+        synthStep++;
+      }, 140);
+    }
+
+    function playStandardSynth() {
+      clearAudio();
+      const seq = [392, 440, 494, 523, 494, 440, 392, 349];
+      synthTickInterval = setInterval(() => {
+        const f = seq[synthStep % seq.length];
+        createOsc(f, "triangle", 0.05, 0.55, 0.03, 0.12);
+        createOsc(f * 1.5, "sine", 0.012, 0.48, 0.02, 0.10);
+        synthStep++;
+      }, 520);
+    }
+
+    function playRelaxSynth() {
+      clearAudio();
+      const seq = [220, 247, 262, 294, 262, 247];
+      synthTickInterval = setInterval(() => {
+        const f = seq[synthStep % seq.length];
+        createOsc(f, "sine", 0.04, 2.4, 0.35, 0.65);
+        createOsc(f * 2, "triangle", 0.012, 2.0, 0.22, 0.52);
+        synthStep++;
+      }, 1700);
+    }
+
+    function playMoreSynth() {
+      clearAudio();
+      const seq = [880, 988, 1047, 1175, 1319, 1397, 1568];
+      synthTickInterval = setInterval(() => {
+        const f = seq[synthStep % seq.length];
+        createOsc(f, "square", 0.045, 0.1, 0.002, 0.02);
+        createOsc(f * 2, "triangle", 0.02, 0.08, 0.002, 0.02);
+        synthStep++;
+      }, 95);
+    }
+
+    function startSoundFor(modeKey) {
+      if (!audioStarted) return;
+      if (modeKey === "quick") playQuickSynth();
+      else if (modeKey === "standard") playStandardSynth();
+      else if (modeKey === "relax") playRelaxSynth();
+      else if (modeKey === "more") playMoreSynth();
+      else clearAudio();
+    }
+
+    // =========================
+    // SESSION STATE
+    // =========================
+    let session = {
+      modeKey: null,
+      running: false,
+      paused: false,
+      continuous: false,
+      duration: 0,
+      elapsed: 0,
+      startTs: 0,
+      activeButton: null
+    };
+
+    let lastFrameTs = 0;
+
+    function resetSessionState() {
+      session = {
+        modeKey: null,
+        running: false,
+        paused: false,
+        continuous: false,
+        duration: 0,
+        elapsed: 0,
+        startTs: 0,
+        activeButton: null
+      };
+    }
+
+    // =========================
+    // BUTTON / RING HELPERS
+    // =========================
+    function getProgressCircle(button) {
+      return button.querySelector(".progress");
+    }
+
+    function getCircumference(circle) {
+      const r = Number(circle.getAttribute("r"));
+      return 2 * Math.PI * r;
+    }
+
+    function resetRing(button) {
+      const progress = getProgressCircle(button);
+      const c = getCircumference(progress);
+      progress.style.strokeDasharray = `${c}`;
+      progress.style.strokeDashoffset = `${c}`;
+      button.classList.remove("active", "paused");
+    }
+
+    function setRingProgress(button, ratio) {
+      const progress = getProgressCircle(button);
+      const c = getCircumference(progress);
+      const offset = c * (1 - Math.max(0, Math.min(1, ratio)));
+      progress.style.strokeDasharray = `${c}`;
+      progress.style.strokeDashoffset = `${offset}`;
+    }
+
+    function resetAllButtons() {
+      buttons.forEach(resetRing);
+    }
+
+    function getButtonByMode(modeKey) {
+      return buttons.find(btn => btn.dataset.mode === modeKey);
+    }
+
+    function updateStatus() {
+      if (!session.running) {
+        statusText.textContent = "Idle";
+        return;
+      }
+      if (session.paused) {
+        statusText.textContent = `Paused · ${MODE_NAMES[session.modeKey]}`;
+        return;
+      }
+      if (session.continuous) {
+        statusText.textContent = `Running · ${MODE_NAMES[session.modeKey]} · Open`;
+        return;
+      }
+      const remaining = Math.max(0, Math.ceil(session.duration - session.elapsed));
+      statusText.textContent = `Running · ${MODE_NAMES[session.modeKey]} · ${remaining}s`;
+    }
+
+    // =========================
+    // SESSION CONTROL
+    // =========================
+    function stopSession() {
+      clearAudio();
+      resetAllButtons();
+      resetSessionState();
+      updateStatus();
+    }
+
+    function completeSession() {
+      clearAudio();
+      if (session.activeButton) {
+        session.activeButton.classList.remove("active", "paused");
+        setRingProgress(session.activeButton, 1);
+      }
+      resetSessionState();
+      updateStatus();
+    }
+
+    function startMode(modeKey) {
+      ensureAudio();
+
+      const mode = MODES[modeKey];
+      if (!mode) return;
+
+      stopSession();
+
+      const btn = getButtonByMode(modeKey);
+
+      session.modeKey = modeKey;
+      session.running = true;
+      session.paused = false;
+      session.continuous = mode.duration == null;
+      session.duration = mode.duration ?? 0;
+      session.elapsed = 0;
+      session.startTs = performance.now();
+      session.activeButton = btn;
+
+      btn.classList.add("active");
+      setRingProgress(btn, 0);
+
+      startSoundFor(modeKey);
+      updateStatus();
+    }
+
+    function togglePause() {
+      if (!session.running) return;
+
+      session.paused = !session.paused;
+
+      const pauseBtn = getButtonByMode("pause");
+      if (session.paused) {
+        session.activeButton?.classList.add("paused");
+        pauseBtn?.classList.add("active");
+        clearAudio();
+      } else {
+        session.activeButton?.classList.remove("paused");
+        pauseBtn?.classList.remove("active");
+        startSoundFor(session.modeKey);
+      }
+      updateStatus();
+    }
+
+    function addMoreTime() {
+      ensureAudio();
+
+      if (session.running && !session.continuous && !session.paused) {
+        session.duration += MODES.more.duration;
+        startSoundFor("more");
+        setTimeout(() => {
+          if (session.running && !session.paused) startSoundFor(session.modeKey);
+        }, 350);
+        return;
+      }
+
+      if (!session.running) {
+        startMode("more");
+      }
+    }
+
+    // =========================
+    // LIGHTING SYSTEM
+    // =========================
+    const VISUALS = {
+      more: {
+        bg: [
+          [0,   "#2a1518"],
+          [0.34,"#77202a"],
+          [0.70,"#da6a2d"],
+          [1,   "#264a95"]
+        ],
+        field1: ["#ff6c40", "#ffb34f", "#e54343", "#447fff"],
+        field2: ["#ffd26d", "#ff8257", "#ff9b66", "#5b95ff"],
+        speed1: 0.0027,
+        speed2: 0.0038,
+        amp1: 240,
+        amp2: 320,
+        swirl: 1.15,
+        blur1: 52,
+        blur2: 84,
+        alpha1: 0.68,
+        alpha2: 0.42,
+        sweepA: { color: "rgba(255,242,205,0.42)", y: 0.30, width: 24, speed: 0.0046, blur: 28, alpha: 0.90 },
+        sweepB: { color: "rgba(255,135,88,0.30)", y: 0.72, width: 18, speed: 0.0058, blur: 24, alpha: 0.78 },
+        veil: 0.02
+      },
+
+      quick: {
+        bg: [
+          [0,   "#0f3550"],
+          [0.36,"#2f7fc6"],
+          [0.72,"#72c2ea"],
+          [1,   "#d7eef4"]
+        ],
+        field1: ["#1f7dd8", "#58b5e8", "#d8f3f4", "#2d8ebf"],
+        field2: ["#89d8ef", "#2e75ce", "#5eb7dd", "#edf9fa"],
+        speed1: 0.0019,
+        speed2: 0.0026,
+        amp1: 180,
+        amp2: 220,
+        swirl: 0.92,
+        blur1: 56,
+        blur2: 88,
+        alpha1: 0.60,
+        alpha2: 0.34,
+        sweepA: { color: "rgba(240,250,252,0.24)", y: 0.34, width: 16, speed: 0.0030, blur: 24, alpha: 0.68 },
+        sweepB: { color: "rgba(210,244,250,0.14)", y: 0.66, width: 10, speed: 0.0036, blur: 22, alpha: 0.52 },
+        veil: 0.038
+      },
+
+      standard: {
+        bg: [
+          [0,   "#9fa7a2"],
+          [0.38,"#b6beb8"],
+          [1,   "#cfd6d1"]
+        ],
+        field1: ["#bcc3bc", "#9ba7a1", "#d8ddd9", "#adb7b1"],
+        field2: ["#c8cfca", "#a5afa9", "#dfe4e0", "#b7c0ba"],
+        speed1: 0.00115,
+        speed2: 0.00155,
+        amp1: 130,
+        amp2: 155,
+        swirl: 0.72,
+        blur1: 60,
+        blur2: 92,
+        alpha1: 0.50,
+        alpha2: 0.24,
+        sweepA: { color: "rgba(248,250,246,0.11)", y: 0.42, width: 10, speed: 0.0016, blur: 22, alpha: 0.28 },
+        sweepB: { color: "rgba(224,232,228,0.08)", y: 0.72, width: 8, speed: 0.0019, blur: 20, alpha: 0.22 },
+        veil: 0.05
+      },
+
+      relax: {
+        bg: [
+          [0,   "#d8cfe0"],
+          [0.34,"#dcc5d7"],
+          [0.70,"#d5dbe4"],
+          [1,   "#efe8ef"]
+        ],
+        field1: ["#e3d5e8", "#d9c7d8", "#d0dcea", "#f3edf2"],
+        field2: ["#dacfe4", "#e7d9e3", "#cfd8e4", "#ede8f0"],
+        speed1: 0.00075,
+        speed2: 0.0010,
+        amp1: 108,
+        amp2: 128,
+        swirl: 0.58,
+        blur1: 74,
+        blur2: 108,
+        alpha1: 0.48,
+        alpha2: 0.20,
+        sweepA: { color: "rgba(255,250,255,0.08)", y: 0.40, width: 8, speed: 0.0010, blur: 24, alpha: 0.16 },
+        sweepB: { color: "rgba(240,244,255,0.06)", y: 0.76, width: 6, speed: 0.00115, blur: 22, alpha: 0.12 },
+        veil: 0.065
+      },
+
+      continuous: {
+        bg: [
+          [0,   "#f4efe7"],
+          [0.50,"#eee7dd"],
+          [1,   "#e7ded2"]
+        ],
+        field1: ["#f7f2ea", "#efe8de", "#f2ece2", "#e9e0d5"],
+        field2: ["#f8f5ef", "#f0e8de", "#f4ede4", "#eadfd2"],
+        speed1: 0.00045,
+        speed2: 0.00062,
+        amp1: 78,
+        amp2: 92,
+        swirl: 0.42,
+        blur1: 82,
+        blur2: 118,
+        alpha1: 0.36,
+        alpha2: 0.14,
+        sweepA: { color: "rgba(255,255,255,0.04)", y: 0.48, width: 6, speed: 0.00062, blur: 22, alpha: 0.08 },
+        sweepB: { color: "rgba(255,248,240,0.03)", y: 0.70, width: 5, speed: 0.0007, blur: 20, alpha: 0.06 },
+        veil: 0.08
+      },
+
+      idle: {
+        bg: [
+          [0, "#ececec"],
+          [1, "#e6e6e6"]
+        ],
+        field1: ["#efefef", "#e8e8e8", "#f2f2f2", "#e3e3e3"],
+        field2: ["#f4f4f4", "#ececec", "#f0f0f0", "#e7e7e7"],
+        speed1: 0.00015,
+        speed2: 0.00022,
+        amp1: 24,
+        amp2: 34,
+        swirl: 0.2,
+        blur1: 90,
+        blur2: 120,
+        alpha1: 0.14,
+        alpha2: 0.08,
+        sweepA: { color: "rgba(255,255,255,0.03)", y: 0.46, width: 4, speed: 0.0003, blur: 18, alpha: 0.04 },
+        sweepB: { color: "rgba(255,255,255,0.02)", y: 0.70, width: 3, speed: 0.00032, blur: 18, alpha: 0.03 },
+        veil: 0.04
+      }
+    };
+
+    function fillGradient(stops) {
+      const g = ctx.createLinearGradient(0, 0, w, h);
+      for (const [p, c] of stops) g.addColorStop(p, c);
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    function dynamicField(colors, speed, amp, swirl, blur, alpha, timeScale = 1) {
+      ctx.save();
+      ctx.filter = `blur(${blur}px)`;
+      ctx.globalAlpha = alpha;
+
+      const bands = 7;
+      for (let i = 0; i < bands; i++) {
+        const y1 = (i / bands) * h;
+        const y2 = ((i + 1) / bands) * h;
+
+        const tt = performance.now() * timeScale;
+
+        const sx1 = Math.sin(tt * speed + i * 1.4) * amp;
+        const sx2 = Math.cos(tt * speed * 0.88 + i * 1.17) * amp;
+        const sx3 = Math.sin(tt * speed * 1.04 + i * 0.76) * amp;
+
+        const sy1 = Math.cos(tt * speed * 0.93 + i * 0.8) * amp * 0.34 * swirl;
+        const sy2 = Math.sin(tt * speed * 1.08 + i * 1.2) * amp * 0.28 * swirl;
+        const sy3 = Math.cos(tt * speed * 1.15 + i * 1.6) * amp * 0.22 * swirl;
+        const sy4 = Math.sin(tt * speed * 0.98 + i * 0.55) * amp * 0.30 * swirl;
+
+        const grad = ctx.createLinearGradient(
+          0 + sx1, y1 + sy1,
+          w + sx2, y2 + sy2
+        );
+        grad.addColorStop(0, colors[i % colors.length]);
+        grad.addColorStop(0.5, colors[(i + 1) % colors.length]);
+        grad.addColorStop(1, colors[(i + 2) % colors.length]);
+
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.moveTo(-220, y1 + sy1);
+        ctx.bezierCurveTo(
+          w * 0.18 + sx2 * 0.55, y1 + sy3 + Math.sin(tt * speed * 1.6 + i) * 42 * swirl,
+          w * 0.52 + sx3 * 0.45, y2 - sy2 + Math.cos(tt * speed * 1.2 + i * 0.6) * 55 * swirl,
+          w + 220, y2 + sy4
+        );
+        ctx.lineTo(w + 220, h + 220);
+        ctx.lineTo(-220, h + 220);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      ctx.restore();
+    }
+
+    function addHighlightSweep(sweep, swirlFactor = 1, timeScale = 1) {
+      ctx.save();
+      ctx.filter = `blur(${sweep.blur}px)`;
+      ctx.globalAlpha = sweep.alpha;
+      ctx.strokeStyle = sweep.color;
+      ctx.lineWidth = sweep.width;
+      ctx.beginPath();
+
+      const tt = performance.now() * timeScale;
+      const yBase = h * sweep.y;
+
+      for (let x = -120; x <= w + 120; x += 26) {
+        const xx = x + Math.sin(tt * sweep.speed * 0.9 + x * 0.0016) * 20 * swirlFactor;
+        const yy =
+          yBase +
+          Math.sin(x * 0.0038 + tt * sweep.speed) * (h * 0.055) * swirlFactor +
+          Math.cos(x * 0.0022 + tt * sweep.speed * 0.84) * (h * 0.030) * swirlFactor +
+          Math.sin(x * 0.0011 - tt * sweep.speed * 0.55) * (h * 0.018) * swirlFactor;
+
+        if (x === -120) ctx.moveTo(xx, yy);
+        else ctx.lineTo(xx, yy);
+      }
+
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function addSoftVeil(alpha = 0.06) {
+      ctx.save();
+      ctx.globalCompositeOperation = "soft-light";
+      ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+      ctx.fillRect(0, 0, w, h);
+      ctx.restore();
+    }
+
+    function getVisualTimeScale(modeKey) {
+      if (session.paused) return 0.02;
+      switch (modeKey) {
+        case "more": return 1.2;
+        case "quick": return 1.0;
+        case "standard": return 0.9;
+        case "relax": return 0.8;
+        case "continuous": return 0.7;
+        default: return 0.5;
+      }
+    }
+
+    function renderMode(modeKey) {
+      const v = VISUALS[modeKey] || VISUALS.idle;
+      const ts = getVisualTimeScale(modeKey);
+
+      fillGradient(v.bg);
+      dynamicField(v.field1, v.speed1, v.amp1, v.swirl, v.blur1, v.alpha1, ts);
+      dynamicField(v.field2, v.speed2, v.amp2, v.swirl, v.blur2, v.alpha2, ts);
+      addHighlightSweep(v.sweepA, v.swirl, ts);
+      addHighlightSweep(v.sweepB, v.swirl * 0.9, ts);
+      addSoftVeil(v.veil);
+    }
+
+    // =========================
+    // INTERACTION
+    // =========================
+    function bindTap(el, handler) {
+      let touched = false;
+
+      el.addEventListener("touchend", (e) => {
+        e.preventDefault();
+        touched = true;
+        handler();
+        setTimeout(() => { touched = false; }, 50);
+      }, { passive: false });
+
+      el.addEventListener("click", (e) => {
+        if (touched) return;
+        e.preventDefault();
+        handler();
+      });
+    }
+
+    buttons.forEach(button => {
+      const key = button.dataset.mode;
+      bindTap(button, () => {
+        if (key === "pause") {
+          togglePause();
+        } else if (key === "more") {
+          addMoreTime();
+        } else {
+          startMode(key);
+        }
+      });
+    });
+
+    // =========================
+    // FRAME LOOP
+    // =========================
+    function updateSession(deltaSec) {
+      if (!session.running || session.paused) return;
+
+      if (session.continuous) {
+        // no completion
+        return;
+      }
+
+      session.elapsed += deltaSec;
+      const ratio = session.elapsed / session.duration;
+      if (session.activeButton) setRingProgress(session.activeButton, ratio);
+
+      if (ratio >= 1) {
+        completeSession();
+      }
+    }
+
+    function renderFrame(ts) {
+      const delta = lastFrameTs ? (ts - lastFrameTs) / 1000 : 0;
+      lastFrameTs = ts;
+
+      updateSession(delta);
+      renderMode(session.running ? session.modeKey : "idle");
+      updateStatus();
+
+      requestAnimationFrame(renderFrame);
+    }
+
+    // init
+    resetAllButtons();
+    updateStatus();
+    requestAnimationFrame(renderFrame);
+  </script>
+</body>
+</html>
