@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no"
+  />
+  <title>Shower Mode iPad Prototype</title>
+  <style>
+    :root {
+      --bg: #0c0f14;
+      --text: rgba(255,255,255,0.96);
+      --ring-track: rgba(255,255,255,0.28);
+      --ring-fill: #e4d2a4;
+      --button-fill: rgba(255,255,255,0.06);
+      --shadow: 0 12px 28px rgba(0,0,0,0.22);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Arial, sans-serif;
+      touch-action: manipulation;
+    }
+
+    body {
+      position: relative;
+      color: var(--text);
+    }
+
+    canvas#fx {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: #0c0f14;
+    }
+
+    .veil {
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(circle at center, rgba(255,255,255,0.06), transparent 46%),
+        linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      pointer-events: none;
+    }
+
+    .ui {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      z-index: 10;
+    }
+
+    .layout {
+      width: min(1040px, 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 54px;
+    }
+
+    .row {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 64px;
+      width: 100%;
+    }
+
+    .row.bottom {
+      gap: 96px;
+    }
+
+    .mode {
+      position: relative;
+      border: none;
+      background: transparent;
+      padding: 0;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .mode:active {
+      transform: scale(0.98);
+    }
+
+    .circle {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      border-radius: 50%;
+      background: var(--button-fill);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .large .circle {
+      width: 180px;
+      height: 180px;
+    }
+
+    .small .circle {
+      width: 124px;
+      height: 124px;
+    }
+
+    .label {
+      position: relative;
+      z-index: 2;
+      white-space: pre-line;
+      line-height: 1.22;
+      font-weight: 500;
+      color: var(--text);
+      text-shadow: 0 1px 6px rgba(0,0,0,0.2);
+      padding: 14px;
+    }
+
+    .large .label {
+      font-size: 24px;
+    }
+
+    .small .label {
+      font-size: 19px;
+    }
+
+    .ring-svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+      z-index: 1;
+      overflow: visible;
+    }
+
+    .track {
+      fill: none;
+      stroke: var(--ring-track);
+      stroke-width: 4;
+    }
+
+    .progress {
+      fill: none;
+      stroke: var(--ring-fill);
+      stroke-width: 5;
+      stroke-linecap: round;
+      stroke-dasharray: 999;
+      stroke-dashoffset: 999;
+      transition: stroke 0.2s ease;
+      filter: drop-shadow(0 0 4px rgba(228,210,164,0.4));
+    }
+
+    .mode .inner-outline {
+      position: absolute;
+      inset: 8px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.16);
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .mode.active .circle {
+      background: rgba(255,255,255,0.08);
+    }
+
+    .mode.active .track {
+      stroke: rgba(255,255,255,0.34);
+    }
+
+    .mode.active::after {
+      content: "";
+      position: absolute;
+      inset: -6px;
+      border-radius: 50%;
+      box-shadow: 0 0 0 8px rgba(228,210,164,0.08);
+      pointer-events: none;
+    }
+
+    .controls {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      z-index: 20;
+      display: flex;
+      gap: 10px;
+    }
+
+    .ctrl {
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(0,0,0,0.22);
+      color: rgba(255,255,255,0.9);
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-size: 14px;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      cursor: pointer;
+    }
+
+    @media (max-width: 900px) {
+      .row { gap: 30px; }
+      .row.bottom { gap: 48px; }
+
+      .large .circle {
+        width: 150px;
+        height: 150px;
+      }
+
+      .small .circle {
+        width: 110px;
+        height: 110px;
+      }
+
+      .large .label { font-size: 20px; }
+      .small .label { font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="fx"></canvas>
+  <div class="veil"></div>
+
+  <div class="ui">
+    <div class="layout">
+      <div class="row top">
+        <button class="mode large" data-mode="quick" aria-label="Quick Refresh">
+          <div class="circle">
+            <div class="inner-outline"></div>
+            <svg class="ring-svg" viewBox="0 0 100 100" aria-hidden="true">
+              <circle class="track" cx="50" cy="50" r="47"></circle>
+              <circle class="progress" cx="50" cy="50" r="47"></circle>
+            </svg>
+            <div class="label">Quick
+Refresh</div>
+          </div>
+        </button>
+
+        <button class="mode large" data-mode="standard" aria-label="Standard Shower">
+          <div class="circle">
+            <div class="inner-outline"></div>
+            <svg class="ring-svg" viewBox="0 0 100 100" aria-hidden="true">
+              <circle class="track" cx="50" cy="50" r="47"></circle>
+              <circle class="progress" cx="50" cy="50" r="47"></circle>
+            </svg>
+            <div class="label">Standard
+Shower</div>
+          </div>
+        </button>
+
+        <button class="mode large" data-mode="relax" aria-label="Relax Ritual">
+          <div class="circle">
+            <div class="inner-outline"></div>
+            <svg class="ring-svg" viewBox="0 0 100 100" aria-hidden="true">
+              <circle class="track" cx="50" cy="50" r="47"></circle>
+              <circle class="progress" cx="50" cy="50" r="47"></circle>
+            </svg>
+            <div class="label">Relax
+Ritual</div>
+          </div>
+        </button>
+      </div>
+
+      <div class="row bottom">
+        <button class="mode small" data-mode="continuous" aria-label="Continuous">
+          <div class="circle">
+            <div class="inner-outline"></div>
+            <svg class="ring-svg" viewBox="0 0 100 100" aria-hidden="true">
+              <circle class="track" cx="50" cy="50" r="47"></circle>
+              <circle class="progress" cx="50" cy="50" r="47"></circle>
+            </svg>
+            <div class="label">Continuous</div>
+          </div>
+        </button>
+
+        <button class="mode small" data-mode="more" aria-label="1 More Min">
+          <div class="circle">
+            <div class="inner-outline"></div>
+            <svg class="ring-svg" viewBox="0 0 100 100" aria-hidden="true">
+              <circle class="track" cx="50" cy="50" r="47"></circle>
+              <circle class="progress" cx="50" cy="50" r="47"></circle>
+            </svg>
+            <div class="label">1 More
+Min</div>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="ctrl" id="stopBtn">Stop</button>
+    <button class="ctrl" id="fsBtn">Fullscreen</button>
+  </div>
+
+  <audio id="audioQuick" preload="auto" src="alla-turca.mp3"></audio>
+  <audio id="audioStandard" preload="auto" src="nachtmusik.mp3"></audio>
+  <audio id="audioRelax" preload="auto" src="clair-de-lune.mp3"></audio>
+  <audio id="audioMore" preload="auto" src="flight-of-the-bumblebee.mp3"></audio>
+
+  <script>
+    const MODES = {
+      quick: {
+        name: "Quick Refresh",
+        duration: 10,
+        fx: "quick",
+        audio: "audioQuick"
+      },
+      standard: {
+        name: "Standard Shower",
+        duration: 20,
+        fx: "standard",
+        audio: "audioStandard"
+      },
+      relax: {
+        name: "Relax Ritual",
+        duration: 30,
+        fx: "relax",
+        audio: "audioRelax"
+      },
+      continuous: {
+        name: "Continuous",
+        duration: null,
+        fx: "standard",
+        audio: null
+      },
+      more: {
+        name: "1 More Min",
+        duration: 1,
+        fx: "none",
+        audio: "audioMore"
+      }
+    };
+
+    const buttons = document.querySelectorAll(".mode");
+    const stopBtn = document.getElementById("stopBtn");
+    const fsBtn = document.getElementById("fsBtn");
+
+    const canvas = document.getElementById("fx");
+    const ctx = canvas.getContext("2d");
+
+    const audios = {
+      audioQuick: document.getElementById("audioQuick"),
+      audioStandard: document.getElementById("audioStandard"),
+      audioRelax: document.getElementById("audioRelax"),
+      audioMore: document.getElementById("audioMore")
+    };
+
+    let current = {
+      key: null,
+      button: null,
+      duration: 0,
+      elapsed: 0,
+      running: false,
+      intervalId: null,
+      continuous: false,
+      fx: "idle"
+    };
+
+    let visualState = {
+      mode: "idle",
+      t: 0
+    };
+
+    function resizeCanvas() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.floor(window.innerWidth * dpr);
+      canvas.height = Math.floor(window.innerHeight * dpr);
+      canvas.style.width = window.innerWidth + "px";
+      canvas.style.height = window.innerHeight + "px";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+
+    function drawIdle() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const g = ctx.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0, "#0d1015");
+      g.addColorStop(1, "#11151b");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+
+      const rg = ctx.createRadialGradient(w * 0.5, h * 0.45, 50, w * 0.5, h * 0.45, h * 0.7);
+      rg.addColorStop(0, "rgba(255,255,255,0.06)");
+      rg.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = rg;
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    function drawQuick(t) {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+
+      const bg = ctx.createLinearGradient(0, 0, w, h);
+      bg.addColorStop(0, "#07131f");
+      bg.addColorStop(0.5, "#0d2542");
+      bg.addColorStop(1, "#08131e");
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, w, h);
+
+      for (let i = 0; i < 7; i++) {
+        const speed = 3.0;
+        const x = (Math.sin(t * speed * 0.002 + i * 0.8) * 0.5 + 0.5) * w;
+        const y = (i / 6) * h;
+        const radius = 220 + Math.sin(t * 0.003 * speed + i) * 80;
+
+        const rg = ctx.createRadialGradient(x, y, 0, x, y, radius);
+        rg.addColorStop(0, "rgba(80,180,255,0.22)");
+        rg.addColorStop(0.5, "rgba(47,130,240,0.12)");
+        rg.addColorStop(1, "rgba(20,40,90,0)");
+        ctx.fillStyle = rg;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      for (let i = 0; i < 28; i++) {
+        const y = (i / 27) * h;
+        const offset = Math.sin(t * 0.01 * 3 + i * 0.35) * 60;
+        ctx.strokeStyle = "rgba(150,220,255,0.10)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(-80, y + offset);
+        ctx.bezierCurveTo(w * 0.3, y - offset, w * 0.65, y + offset, w + 80, y - offset);
+        ctx.stroke();
+      }
+    }
+
+    function drawStandard(t) {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+
+      const bg = ctx.createLinearGradient(0, 0, w, h);
+      bg.addColorStop(0, "#151618");
+      bg.addColorStop(0.5, "#232427");
+      bg.addColorStop(1, "#0f1012");
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, w, h);
+
+      for (let i = 0; i < 6; i++) {
+        const x = w * (0.18 + i * 0.14) + Math.sin(t * 0.0015 + i) * 55;
+        const y = h * (0.2 + (i % 3) * 0.22) + Math.cos(t * 0.0018 + i * 1.7) * 45;
+        const radius = 180 + Math.sin(t * 0.001 + i * 2.2) * 40;
+
+        const rg = ctx.createRadialGradient(x, y, 0, x, y, radius);
+        rg.addColorStop(0, "rgba(255,255,255,0.16)");
+        rg.addColorStop(0.45, "rgba(210,210,210,0.08)");
+        rg.addColorStop(1, "rgba(120,120,120,0)");
+        ctx.fillStyle = rg;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.strokeStyle = "rgba(255,255,255,0.05)";
+      ctx.lineWidth = 3;
+      for (let j = 0; j < 9; j++) {
+        const baseY = (j / 8) * h;
+        ctx.beginPath();
+        for (let x = 0; x <= w; x += 26) {
+          const y = baseY + Math.sin((x * 0.008) + (t * 0.002) + j) * 14;
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+    }
+
+    function drawRelax(t) {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+
+      const bg = ctx.createLinearGradient(0, 0, w, h);
+      bg.addColorStop(0, "#122036");
+      bg.addColorStop(0.5, "#2c2954");
+      bg.addColorStop(1, "#3d2143");
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, w, h);
+
+      const blobs = [
+        { x: w * (0.25 + Math.sin(t * 0.0008) * 0.06), y: h * (0.35 + Math.cos(t * 0.0007) * 0.05), r: 330, c1: "rgba(125,195,255,0.20)", c2: "rgba(125,195,255,0)" },
+        { x: w * (0.65 + Math.cos(t * 0.0006) * 0.07), y: h * (0.32 + Math.sin(t * 0.0009) * 0.04), r: 360, c1: "rgba(255,170,220,0.18)", c2: "rgba(255,170,220,0)" },
+        { x: w * (0.48 + Math.sin(t * 0.0005) * 0.05), y: h * (0.68 + Math.cos(t * 0.0006) * 0.04), r: 300, c1: "rgba(180,160,255,0.14)", c2: "rgba(180,160,255,0)" }
+      ];
+
+      blobs.forEach(b => {
+        const rg = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
+        rg.addColorStop(0, b.c1);
+        rg.addColorStop(1, b.c2);
+        ctx.fillStyle = rg;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      for (let i = 0; i < 18; i++) {
+        const yy = (i / 17) * h;
+        ctx.strokeStyle = "rgba(255,255,255,0.05)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, yy + Math.sin(t * 0.001 + i) * 12);
+        ctx.bezierCurveTo(
+          w * 0.25, yy - 18 + Math.cos(t * 0.0012 + i) * 10,
+          w * 0.75, yy + 18 + Math.sin(t * 0.0011 + i) * 10,
+          w, yy + Math.cos(t * 0.001 + i) * 12
+        );
+        ctx.stroke();
+      }
+    }
+
+    function render(now) {
+      visualState.t = now;
+      if (visualState.mode === "quick") drawQuick(now);
+      else if (visualState.mode === "standard") drawStandard(now);
+      else if (visualState.mode === "relax") drawRelax(now);
+      else drawIdle();
+
+      requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
+
+    function getProgressCircle(button) {
+      return button.querySelector(".progress");
+    }
+
+    function getCircumference(circle) {
+      const r = Number(circle.getAttribute("r"));
+      return 2 * Math.PI * r;
+    }
+
+    function resetRing(button) {
+      const progress = getProgressCircle(button);
+      const c = getCircumference(progress);
+      progress.style.strokeDasharray = `${c}`;
+      progress.style.strokeDashoffset = `${c}`;
+      button.classList.remove("active");
+    }
+
+    function setRingProgress(button, ratio) {
+      const progress = getProgressCircle(button);
+      const c = getCircumference(progress);
+      const offset = c * (1 - Math.max(0, Math.min(1, ratio)));
+      progress.style.strokeDasharray = `${c}`;
+      progress.style.strokeDashoffset = `${offset}`;
+    }
+
+    function resetAllButtons() {
+      buttons.forEach(resetRing);
+    }
+
+    function stopAllAudio() {
+      Object.values(audios).forEach(a => {
+        a.pause();
+        a.currentTime = 0;
+      });
+    }
+
+    async function playAudioById(id) {
+      stopAllAudio();
+      if (!id) return;
+      const a = audios[id];
+      if (!a) return;
+      a.loop = true;
+      try {
+        await a.play();
+      } catch (err) {
+        console.warn("Audio play blocked or failed:", err);
+      }
+    }
+
+    function clearCurrentInterval() {
+      if (current.intervalId) {
+        clearInterval(current.intervalId);
+        current.intervalId = null;
+      }
+    }
+
+    function stopSession() {
+      clearCurrentInterval();
+      stopAllAudio();
+      current = {
+        key: null,
+        button: null,
+        duration: 0,
+        elapsed: 0,
+        running: false,
+        intervalId: null,
+        continuous: false,
+        fx: "idle"
+      };
+      visualState.mode = "idle";
+      resetAllButtons();
+    }
+
+    function startMode(button, key) {
+      const mode = MODES[key];
+      if (!mode) return;
+
+      if (current.running && current.key === key) {
+        stopSession();
+        return;
+      }
+
+      stopSession();
+
+      current.key = key;
+      current.button = button;
+      current.duration = mode.duration || 0;
+      current.elapsed = 0;
+      current.running = true;
+      current.continuous = mode.duration === null;
+      current.fx = mode.fx;
+
+      resetAllButtons();
+      button.classList.add("active");
+      setRingProgress(button, 0);
+      visualState.mode = mode.fx === "none" ? "idle" : mode.fx;
+
+      playAudioById(mode.audio);
+
+      if (current.continuous) {
+        return;
+      }
+
+      current.intervalId = setInterval(() => {
+        current.elapsed += 0.05;
+        const ratio = current.elapsed / current.duration;
+        setRingProgress(button, ratio);
+
+        if (ratio >= 1) {
+          clearCurrentInterval();
+          stopAllAudio();
+          button.classList.remove("active");
+          current.running = false;
+          current.key = null;
+          current.button = null;
+          current.duration = 0;
+          current.elapsed = 0;
+          current.continuous = false;
+          visualState.mode = "idle";
+        }
+      }, 50);
+    }
+
+    function addOneMore(button) {
+      startMode(button, "more");
+    }
+
+    function bindTap(el, handler) {
+      let touched = false;
+
+      el.addEventListener("touchend", (e) => {
+        e.preventDefault();
+        touched = true;
+        handler();
+        setTimeout(() => { touched = false; }, 50);
+      }, { passive: false });
+
+      el.addEventListener("click", (e) => {
+        if (touched) return;
+        e.preventDefault();
+        handler();
+      });
+    }
+
+    buttons.forEach(button => {
+      const key = button.dataset.mode;
+      bindTap(button, () => {
+        if (key === "more") addOneMore(button);
+        else startMode(button, key);
+      });
+    });
+
+    bindTap(stopBtn, () => stopSession());
+
+    bindTap(fsBtn, async () => {
+      try {
+        if (!document.fullscreenElement) {
+          await document.documentElement.requestFullscreen();
+        } else {
+          await document.exitFullscreen();
+        }
+      } catch (err) {
+        console.warn("Fullscreen failed:", err);
+      }
+    });
+
+    resetAllButtons();
+  </script>
+</body>
+</html>
